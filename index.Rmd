@@ -1,27 +1,7 @@
 ---
-library(tidytuesdayR)
-library("tidyverse")
-library("here")
-library("tidyverse")
-
-# tests if a directory named "data" exists locally
-if (!dir.exists(here("data"))) {
-    dir.create(here("data"))
-}
-
-# saves data only once (not each time you knit a R Markdown)
-if (!file.exists(here("data", "chocolate.RDS"))) {
-    url_csv <- "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-18/chocolate.csv"
-    chocolate <- readr::read_csv(url_csv)
-
-    # save the file to RDS objects
-    saveRDS(chocolate, file = here("data", "chocolate.RDS"))
-}
----
----
 title: "index"
 author: "Kate Gordon"
-date: "2024-09-08"
+date: "2024-09-10"
 output: html_document
 ---
 
@@ -35,16 +15,164 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+```{r}
+library("tidytuesdayR")
+library("tidyverse")
+library("here")
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+chocolate <- readRDS(here("data", "chocolate.RDS"))
+as_tibble(chocolate)
 ```
+
+```{r}
+glimpse(chocolate)
+```
+
+**##Part 1: Explore data** \
+In this part, use functions from dplyr and ggplot2 to answer the following questions.
+
+**1.  Make a histogram of the rating scores to visualize the overall distribution of scores**
+
+```{r}
+library(ggplot2)
+# Create a basic histogram of the rating scores
+ggplot(chocolate, aes(x=rating)) + geom_histogram()
+```
+
+Change the number of bins from the default to 10, 15, 20, and 25.
+
+```{r}
+ggplot(chocolate, aes(x=rating)) + geom_histogram(bins = 10)
+```
+
+```{r}
+ggplot(chocolate, aes(x=rating)) + geom_histogram(bins = 15)
+```
+
+```{r}
+ggplot(chocolate, aes(x=rating)) + geom_histogram(bins = 20)
+```
+
+```{r}
+ggplot(chocolate, aes(x=rating)) + geom_histogram(bins = 25)
+```
+
+**Pick on the one that you think looks the best.**
+
+I think the one that looks the best is using **15 bins**. 
+
+**Explain what the difference is when you change the number of bins and explain why you picked the one you did.**
+When the number of bins decreased, the ratings were aggregated into larger groups, allowing the shape of the full distribution to be more easily observed. This shows us thaat the distributin is left-skewed. When decreased to 10 bins, we also observe that the y-axis increases from a maximum of 600 counts to over 1000 counts. I chose this histogram with **15 bins** because it allows us to see that there is a left skew to the distribution with enough detail to quickly observe outliers and rating fluctuations.  
+
+**2. Consider the countries where the beans originated from. How many reviews come from each country of bean origin?**
+
+```{r}
+#Creating a summary table and visualisation grouping the reviews by country of bean origin.
+
+reviews_by_country_of_bean_origin <- 
+  chocolate %>% 
+  group_by(country_of_bean_origin) %>%
+  summarise(n_ratings = n())
+# Print reviews by country of origin
+options(dplyr.print_min = Inf)
+print((reviews_by_country_of_bean_origin))
+```
+
+**3. What is average rating scores from reviews of chocolate bars that have Ecuador as country_of_bean_origin in this dataset?** 
+
+For this same set of reviews, also calculate 
+(1) the total number of reviews and 
+(2) the standard deviation of the rating scores.
+
+Your answer should be a new data frame with these three summary statistics in three columns. 
+
+Label the name of these columns mean, sd, and total.**
+
+```{r}
+average_rating_scores <- 
+  chocolate %>%  
+  group_by(country_of_bean_origin) %>%
+  summarise(mean = mean(rating), sd = sd(rating), total= n(), ) 
+
+average_rating_scores
+```
+
+**Answer: The average rating scores from reviews of chocolate bars that have Ecuador as country_of_bean_origin in this dataset is 3.164384**
+
+
+```{r}
+Ecuador <- filter(average_rating_scores, country_of_bean_origin == "Ecuador")
+print((Ecuador))
+```
+
+
+**4. Which company (name) makes the best chocolate (or has the highest ratings on average) with beans from Ecuador?**
+
+```{r}
+highest_ecuadorian_rated_manufacturer <- 
+  chocolate %>% 
+  group_by(country_of_bean_origin) %>%
+  filter(country_of_bean_origin == "Ecuador") %>%
+  group_by(company_manufacturer) %>%
+  summarise(mean = mean(rating)) %>%
+  arrange(desc(mean)) %>%	
+  filter(mean >= 4)
+print((highest_ecuadorian_rated_manufacturer))
+```
+**Answer: There are 5 manufacturers with equally high average rating scores (4 average): Amano; Benoit Nihant; Beschle (Felchlin); Durci; and The Smooth Chocolator** 
+
+**5. Calculate the average rating across all country of origins for beans. Which top 3 countries (for bean origin) have the highest ratings on average?**
+
+```{r}
+highest_average_rating_scores <- 
+  average_rating_scores %>%  
+  reframe(country_of_bean_origin, mean) %>%
+  arrange(desc(mean))
+as_tibble(highest_average_rating_scores) %>%
+    print(n = 3, width = Inf)
+```
+
+**Answer: The top 3 countries (for bean origin) that have the highest ratings on average are: Tobago,	China, and	Sao Tome & Princip.**
+
+**6. Following up on the previous problem, now remove any countries of bean origins that have less than 10 chocolate bar reviews. Now, which top 3 countries have the highest ratings on average?**
+
+```{r}
+revised_highest_average_rating_scores <- 
+  average_rating_scores %>%  
+  reframe(country_of_bean_origin, mean, total) %>%
+  arrange(desc(mean)) %>%
+  filter(total >= 10)
+as_tibble(revised_highest_average_rating_scores) %>%
+    print(n = 3, width = Inf)
+```
+
+**Answer: The top 3 countries of bean origins that have the highest ratings on average with 10 or more chocolate bar reviews are: Solomon Islands, Congo  and Cuba **
+
+**7. For this last part, let’s explore the relationship between percent chocolate and ratings.
+Use the functions in dplyr, tidyr, and lubridate to perform the following steps to the chocolate dataset:**
+
+Identify the countries of bean origin with at least 50 reviews. 
+Remove reviews from countries are not in this list.
+
+```{r}
+Countries_with_50_plus_reviews <- chocolate %>% 
+  group_by(country_of_bean_origin) %>%
+  reframe(country_of_bean_origin, mean = mean(rating), total= n(), cocoa_percent) %>%
+   filter(total >= 50) %>%
+  arrange(desc(total))
+print((Countries_with_50_plus_reviews))
+```
+
+
+Using the variable describing the chocolate percentage for each review, create a new column that groups chocolate percentages into one of four groups: (i) <60%, (ii) >=60 to <70%, (iii) >=70 to <90%, and (iii) >=90% 
+(Hint check out the substr() function in base R and the case_when() function from dplyr).
+
+Using the new column described in #2, re-order the factor levels (if needed) to be starting with the smallest percentage group and increasing to the largest percentage group (Hint check out the fct_relevel() function from forcats).
+
+For each country, make a set of four side-by-side boxplots plotting the groups on the x-axis and the ratings on the y-axis. These plots should be faceted by country.
+
+**On average, which category of chocolate percentage is most highly rated? Do these countries mostly agree or are there disagreements?**
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
