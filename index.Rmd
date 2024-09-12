@@ -108,20 +108,19 @@ print((Ecuador))
 ```
 
 
-**4. Which company (name) makes the best chocolate (or has the highest ratings on average) with beans from Ecuador?**
+**4. Which company location makes the best chocolate (or has the highest ratings on average) with beans from Ecuador?**
 
 ```{r}
 highest_ecuadorian_rated_manufacturer <- 
   chocolate %>% 
   group_by(country_of_bean_origin) %>%
   filter(country_of_bean_origin == "Ecuador") %>%
-  group_by(company_manufacturer) %>%
+  group_by(company_location) %>%
   summarise(mean = mean(rating)) %>%
-  arrange(desc(mean)) %>%	
-  filter(mean >= 4)
-print((highest_ecuadorian_rated_manufacturer))
+  arrange(desc(mean))  
+  print(highest_ecuadorian_rated_manufacturer)
 ```
-**Answer: There are 5 manufacturers with equally high average rating scores (4 average): Amano; Benoit Nihant; Beschle (Felchlin); Durci; and The Smooth Chocolator** 
+**Answer: Australia with a mean score of 3.81** 
 
 **5. Calculate the average rating across all country of origins for beans. Which top 3 countries (for bean origin) have the highest ratings on average?**
 
@@ -162,14 +161,32 @@ Countries_with_50_plus_reviews <- chocolate %>%
   reframe(country_of_bean_origin, mean = mean(rating), total= n(), cocoa_percent) %>%
    filter(total >= 50) %>%
   arrange(desc(total))
-print((Countries_with_50_plus_reviews))
+as_tibble(Countries_with_50_plus_reviews) %>%
+    print(n = 3, width = Inf)
 ```
 
 
 Using the variable describing the chocolate percentage for each review, create a new column that groups chocolate percentages into one of four groups: (i) <60%, (ii) >=60 to <70%, (iii) >=70 to <90%, and (iii) >=90% 
 (Hint check out the substr() function in base R and the case_when() function from dplyr).
 
+```{r} 
+Categorized_Countries_with_50_plus_reviews <- Countries_with_50_plus_reviews %>% 
+mutate(cocoa_cat = case_when(cocoa_percent < "60" ~ "i",
+                             cocoa_percent >= "60" & cocoa_percent < "70" ~ "ii",
+			cocoa_percent >= "70" & cocoa_percent < "90" ~ "iii",
+			cocoa_percent >= "90" ~ "iv"))
+```
+
+
 Using the new column described in #2, re-order the factor levels (if needed) to be starting with the smallest percentage group and increasing to the largest percentage group (Hint check out the fct_relevel() function from forcats).
+
+```{r}
+Categorized_Countries_with_50_plus_reviews <- Categorized_Countries_with_50_plus_reviews %>% 
+  mutate(cocoa_cat=factor(cocoa_cat)) %>% 
+  mutate(cocoa_cat=fct_relevel(cocoa_cat,c("i","ii","iii","iv"))) %>%
+ arrange(cocoa_cat)
+```
+
 
 For each country, make a set of four side-by-side boxplots plotting the groups on the x-axis and the ratings on the y-axis. These plots should be faceted by country.
 
