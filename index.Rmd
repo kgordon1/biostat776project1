@@ -158,7 +158,7 @@ Remove reviews from countries are not in this list.
 ```{r}
 Countries_with_50_plus_reviews <- chocolate %>% 
   group_by(country_of_bean_origin) %>%
-  reframe(country_of_bean_origin, mean = mean(rating), total= n(), cocoa_percent) %>%
+  reframe(country_of_bean_origin, rating, total= n(), cocoa_percent) %>%
    filter(total >= 50) %>%
   arrange(desc(total))
 as_tibble(Countries_with_50_plus_reviews) %>%
@@ -190,6 +190,181 @@ Categorized_Countries_with_50_plus_reviews <- Categorized_Countries_with_50_plus
 
 For each country, make a set of four side-by-side boxplots plotting the groups on the x-axis and the ratings on the y-axis. These plots should be faceted by country.
 
+```{r}
+ggp <- ggplot(Categorized_Countries_with_50_plus_reviews, aes(x = cocoa_cat, y = rating, fill = cocoa_cat)) + 
+  geom_boxplot(alpha=0.3) + 
+theme(legend.position="none") +
+  facet_wrap(~country_of_bean_origin, scales = "fixed")
+ggp
+```
+
+
 **On average, which category of chocolate percentage is most highly rated? Do these countries mostly agree or are there disagreements?**
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+rating  <- Categorized_Countries_with_50_plus_reviews$rating
+cocoa_cat <- Categorized_Countries_with_50_plus_reviews$cocoa_cat
+mean_rating <- tapply(rating, cocoa_cat, mean)
+mean_rating
+```
+**Answer: On average category II is most highly rated. However there are disagreements in countries such as Nicaragua, Mexico and Brazil where category III rates higher.**
+
+
+**Part 2: Join two datasets together**
+Join two datasets together chocolate and gapminder unfiltered
+
+**Tasks**
+Use this dataset it to create a new column called continent 
+in our chocolate dataset that contains the continent name for each review where the country of bean origin is.
+Only keep reviews that have reviews from countries of bean origin with at least 10 reviews.
+Also, remove the country of bean origin named "Blend".
+Make a set of violin plots with ratings on the y-axis and continents on the x-axis.
+
+#installed install.packages("gapminder")
+
+```{r}
+library(gapminder)
+# countries with info in gapminder::gapminder_unfiltered
+gapminder <-gapminder::gapminder_unfiltered
+```
+
+#group by country of bean origin, add total number of reviews per country, remove countries with <10 reviews and the country of origin labelled Blend
+
+```{r}
+data_1 <- gapminder%>%distinct(country, .keep_all=TRUE) #delete duplicate countries
+gapminder1 <- data_1%>%select(1,2) #select only continent and country
+gapminder2 <- rename(gapminder1, country_of_bean_origin=country)
+
+data_2 <- left_join(x=chocolate, y=gapminder2, by="country_of_bean_origin")
+data_3 <- arrange(data_2,by=country_of_bean_origin)
+```
+
+2. Keep only countries that have at least 10 reviews
+
+```{r}
+count <- data_3%>%count(country_of_bean_origin)
+count2 <- filter(count, n >= 10)
+
+Countries_with_at_least_10 <- inner_join(data_3, count2, by="country_of_bean_origin")
+glimpse(Countries_with_at_least_10)
+```
+3. Remove the country of origin named BLEND
+
+```{r}
+data_4 <- subset(Countries_with_at_least_10, country_of_bean_origin!="Blend")
+glimpse(data_4)
+```
+Check for and correct NA continent values
+
+```{r}
+data_4$continent[data_4$country_of_bean_origin == "Trinidad"] <- "Americas"
+data_4$continent[data_4$country_of_bean_origin == "Congo"] <- "Africa"
+data_4$continent[data_4$country_of_bean_origin == "Sao Tome"] <- "Africa"
+data_4$continent[data_4$country_of_bean_origin == "St. Lucia"] <- "Americas"
+data_4$continent[data_4$country_of_bean_origin == "U.S.A."] <- "Americas"
+```
+**Make a set of violin plots with ratings on the y-axis and continents on the x-axis.**
+
+```{r}
+library(ggplot2)
+# Violin plot
+Violin_Plot <- ggplot(data_4, aes(x=continent, y=rating)) + 
+  geom_violin()
+Violin_Plot
+```
+
+**Part 3: Convert wide data into long data**
+Tasks
+We are going to create a set of features for us to plot over time. 
+Use the functions in dplyr and tidyr to perform the following steps to the chocolate dataset:
+
+Create a new set of columns titled beans, sugar, cocoa_butter, vanilla, letchin, and salt that contain a 1 or 0 representing whether or not that review for the chocolate bar contained that ingredient (1) or not (0).
+See this public gist for how to differentiate S vs S* vs Sa using str_detect() from the stringr package.
+
+```{r}
+chocolate <- chocolate %>%
+        mutate(
+                sugar = case_when(
+                        str_detect(ingredients, regex("S,|S$", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+chocolate <- chocolate %>%
+        mutate(
+                bean = case_when(
+                        str_detect(ingredients, regex("B", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+chocolate <- chocolate %>%
+        mutate(
+                cocoa_butter = case_when(
+                        str_detect(ingredients, regex("C", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+chocolate <- chocolate %>%
+        mutate(
+                vanilla = case_when(
+                        str_detect(ingredients, regex("V", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+chocolate <- chocolate %>%
+        mutate(
+                letchin = case_when(
+                        str_detect(ingredients, regex("L", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+chocolate <- chocolate %>%
+        mutate(
+                salt = case_when(
+                        str_detect(ingredients, regex("Sa", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+```
+
+Create a new set of columns titled char_cocoa, char_sweet, char_nutty, char_creamy, char_roasty, char_earthy that contain a 1 or 0 representing whether or not that the most memorable characteristic for the chocolate bar had that word (1) or not (0). For example, if the word “sweet” appears in the most_memorable_characteristics, then record a 1, otherwise a 0 for that review in the char_sweet column (Hint: check out str_detect() from the stringr package).
+
+```{r}
+chocolate <- chocolate %>%
+        mutate(
+                char_cocoa = case_when(
+                        str_detect(most_memorable_characteristics, regex("cocoa", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+chocolate <- chocolate %>%
+        mutate(
+                char_sweet = case_when(
+                        str_detect(most_memorable_characteristics, regex("sweet", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+chocolate <- chocolate %>%
+        mutate(
+                char_nutty = case_when(
+                        str_detect(most_memorable_characteristics, regex("nutty", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+chocolate <- chocolate %>%
+        mutate(
+                char_creamy = case_when(
+                        str_detect(most_memorable_characteristics, regex("creamy", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+chocolate <- chocolate %>%
+        mutate(
+                char_roasty = case_when(
+                        str_detect(most_memorable_characteristics, regex("roasty", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+chocolate <- chocolate %>%
+        mutate(
+                char_earthy = case_when(
+                        str_detect(most_memorable_characteristics, regex("earthy", ignore_case = TRUE)) ~ 1,
+                        TRUE ~ 0))
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+
