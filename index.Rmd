@@ -170,6 +170,8 @@ Using the variable describing the chocolate percentage for each review, create a
 (Hint check out the substr() function in base R and the case_when() function from dplyr).
 
 ```{r} 
+#Create a new column that groups chocolate percentages into one of four groups: 
+#(i) <60%, (ii) >=60 to <70%, (iii) >=70 to <90%, and (iii) >=90% 
 Categorized_Countries_with_50_plus_reviews <- Countries_with_50_plus_reviews %>% 
 mutate(cocoa_cat = case_when(cocoa_percent < "60" ~ "i",
                              cocoa_percent >= "60" & cocoa_percent < "70" ~ "ii",
@@ -361,10 +363,112 @@ chocolate <- chocolate %>%
 
 ```
 
-```{r}
+For each year (i.e. review_date), calculate the mean value in each new column you created across all reviews for that year. (Hint: If all has gone well thus far, you should have a dataset with 16 rows and 13 columns).
 
+```{r}
+#Create subset of chocolate data set to just review date and features (flavor, taste) 
+#and name it "new chocolate"
+new_chocolate <- chocolate%>%
+select(  review_date, bean, sugar, cocoa_butter, vanilla, letchin, salt, char_cocoa, char_sweet, char_creamy, char_earthy, char_roasty, char_nutty)
+ glimpse(new_chocolate)
 ```
 
 
 ```{r}
+#installed install.packages("plyr")
+library(plyr)
+library(dplyr)
+new_chocolate_2 <- ddply(new_chocolate, .(review_date), summarize,  bean=mean(bean), sugar=mean(sugar), cocoa_butter=mean(cocoa_butter), vanilla=mean(vanilla), letchin=mean(letchin), salt=mean(salt), char_cocoa=mean(char_cocoa), char_sweet=mean(char_sweet), char_creamy=mean(char_creamy), char_earthy=mean(char_earthy), char_roasty=mean(char_roasty), char_nutty=mean(char_nutty))   
+```
 
+```{r}
+new_chocolate_2 <- new_chocolate_2 %>%
+ pivot_longer(cols = 'bean':'char_nutty', 
+               names_to = "feature", 
+               values_to = "mean_score")  %>% 
+  arrange(review_date)
+```
+
+**Part 4: Data visualization**
+
+```{r}
+library(ggplot2)
+ggplot(new_chocolate_2, aes(x = review_date, y = mean_score, col = new_chocolate_2$feature)) +
+  geom_point() + 
+  geom_smooth() +
+theme(legend.position="none") +
+  facet_wrap(~feature, scales = "fixed") +
+    labs(
+    title = "Scatter Plot of Mean Scores Over Time",
+    subtitle = "Average scores of features by review year",
+    caption = "Kate Gordon",
+     x = "Review Date",
+    y = "Mean Score",
+    
+  )
+```
+
+**Part 5: : Make the worst plot you can!**
+
+```{r}
+library(ggplot2)
+ggplot(new_chocolate_2, aes(x = review_date, y = mean_score, col = new_chocolate_2$vanilla)) +
+  geom_point(size=20, color=27) + 
+  geom_smooth(size = 10) +
+theme_dark () +
+    labs(
+    title = "Scatter Plot of Vanilla Scores Over Time",
+    subtitle = "Favorite FLovor of all review year",
+    caption = "worst plot ever",
+    x = "Review Date",
+    y = "Mean Score"
+       )
+```
+**Part 5 Answer:**
+- I set the caption as "worst plot ever". When making awesome plots, you need to make sure your titles match the data.
+- I set my theme to "dark". When making awesome plots, you need to make sure your themes enhance the reader's ability to see your data points.
+- I mislabeled my Title. When making awesome plots, you need to make sure your title accurately represents the your in the plot.
+- I mislabeled my Subtitle. When making awesome plots, you need to make sure your subtitle also accurately represents the conclusion made by the data in the plot.
+- I set my point size to 20. When making awesome plots, you need to make sure your the point in the plot do not overlap.
+- I set my point color to 27, a lime green. When making awesome plots, you need to make sure your color scheme is not distracting to the reader.
+- I set my smooth line to 10. When making awesome plots, you need to make sure your line is meaningful in the plot and does not look like an added shape or other data points.
+
+
+**Part 6: Make my plot a better plot!**
+Take a sad looking plot and make it better!
+
+```{r}
+chocolate %>%
+    ggplot(aes(
+        x = as.factor(review_date),
+        y = rating,
+        fill = review_date
+    )) +
+    geom_violin()
+```
+```{r}
+chocolate %>%
+    ggplot(aes(
+        x = as.factor(review_date),
+        y = rating,
+        fill = review_date
+    )) +
+  theme_minimal() +
+  guides(fill = FALSE) +
+    geom_bar(stat = "identity", fill="chocolate4") +
+  labs(
+    title = "Total Rating Scores of All Chocolates by Year",
+        caption = "Kate Gordon",
+    x = "Year",
+    y = "Total of Rating Scores"
+       )
+  
+```
+**Part 6 Answer:**
+- I changed the type of plot to a bar graph to a type of graph the general public could interpret.
+- I set the theme to "minimal" to eliminate the distracting grey background.
+- I changed the title to be a more accurate summation of the data presented.
+- I added a caption to credit the new author.
+- I changed the title of both the x and y axis to better represent the data presented.
+- I removed the legend.
+- I changed the color of the bars to chocolate be thematic.
